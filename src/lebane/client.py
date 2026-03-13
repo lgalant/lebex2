@@ -1,6 +1,6 @@
 import httpx
 
-#from .requisition.api import RequisitionAPI
+from .requisition.api import RequisitionAPI
 
 
 class LebaneClient:
@@ -17,10 +17,10 @@ class LebaneClient:
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {self.token}"},
         )
-        # LG descomentar esto
-        #self.requisitions = RequisitionAPI(
-        #    session=self._session, keep_raw=self.keep_raw
-        #)
+
+        self.requisitions = RequisitionAPI(
+            session=self._session, keep_raw=self.keep_raw
+        )
         return self
 
     async def __aexit__(self, exc_type, exc, tb):

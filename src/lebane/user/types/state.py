@@ -1,0 +1,9 @@
+from lebane.core.types import BaseEnum
+
+
+class UserState(BaseEnum):
+    ACTIVE = "ACTIVO"
+    SUSPENDED = "SUSPENDIDO"
+    DELETED = "ELIMINADO"
+    INACTIVE = "DESACTIVADO"
+    CHANGE_PASSWORD_REQUIRED = "REQUIERE_CAMBIO_DE_PASSWORD"
