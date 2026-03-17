@@ -17,7 +17,7 @@ aiohttp = "^3.12.14"
 langgraph = "^1.0.9"
 langchain-openai = "^0.3.32"
 langchain-community = "^0.3.27"
-langgraph-checkpoint-postgres = "^2.0.21"
+langgraph-checkpoint-postgres = "^3.0.0"
 psycopg = {extras = ["binary"], version = "^3.2.9"}
 sqlalchemy = "^2.0.41"
 fastapi-pagination = "^0.13.3"
@@ -64,6 +64,7 @@ socksio = "^1.0.0"
 pyppeteer = "^2.0.0"
 pyupgrade = "^3.20.0"
 debugpy = "^1.8.16"
+langgraph-cli = {extras = ["inmem"], version = "^0.4.18"}
 
 [tool.poetry.group.train.dependencies]
 nlpaug = "^1.1.11"

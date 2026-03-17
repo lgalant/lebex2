@@ -1,15 +1,11 @@
+import datetime
 import enum
 import logging
-from collections.abc import Callable
 
-import rapidfuzz.process
-import rapidfuzz.utils
-import sqlalchemy as sa
 from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -18,10 +14,8 @@ from lebane.core.models import Base
 from lebane.requisition.schemas import RequisitionCreate
 from lebane.requisition.schemas.create import RequisitionItemCreate
 from lebane.requisition.schemas.types import ItemType
-from lebane.user.models import UserInDB
-from lebane.user.types import UserState
-
-from .extraction import RequisitionExtracted
+from lebane.requisition.schemas.types import UnitOfMeasurement
+from lebane.requisition.schemas.types import UnitOfMeasurementType
 
 
 logger = logging.getLogger(__name__)
@@ -86,123 +80,63 @@ class ItemInDB(Base):
     category: Mapped["CategoryInDB"] = relationship(back_populates="items")
 
 
-async def search_project_by_name(
-    name: str, organization_id: int, dbsession: AsyncSession
-) -> ProjectInDB:
-    stmt = sa.select(ProjectInDB).where(
-        ProjectInDB.state.not_in((ProjectState.DELETED, ProjectState.CLOSED)),
-        ProjectInDB.organization_id == organization_id,
-    )
-    result = await dbsession.execute(statement=stmt)
-    active_projects = {project.name: project for project in result.scalars()}
-    match = rapidfuzz.process.extractOne(
-        name,
-        active_projects.keys(),
-        processor=rapidfuzz.utils.default_process,
-        score_cutoff=70,
-    )
-    if match:
-        matched_name, _, _ = match
-        return active_projects[matched_name]
-    return None
+def build_requisition(
+    project_id: int | None,
+    responsible_id: int | None,
+    items: list[dict],
+) -> RequisitionCreate:
+    """Build a RequisitionCreate from already-resolved IDs.
 
+    All IDs (project_id, responsible_id, item_id, category_id) must be
+    obtained upfront via the lookup tools (list_available_projects,
+    list_available_items, list_responsible_users) before calling this.
+    """
+    item_schemas = []
+    for item in items:
+        delivery_date = item.get("delivery_date")
+        if delivery_date:
+            expected_at = datetime.datetime.fromisoformat(delivery_date).replace(
+                tzinfo=datetime.timezone.utc,
+                hour=0, minute=0, second=0, microsecond=0,
+            )
+        else:
+            expected_at = (
+                datetime.datetime.now(tz=datetime.timezone.utc)
+                + datetime.timedelta(days=1)
+            ).replace(hour=0, minute=0, second=0, microsecond=0)
 
-async def search_responsible_by_name(
-    name: str, organization_id: int, dbsession: AsyncSession
-) -> UserInDB:
-    stmt = sa.select(UserInDB).where(
-        UserInDB.active.is_(True),
-        UserInDB.state.in_(
-            (UserState.ACTIVE, UserState.CHANGE_PASSWORD_REQUIRED)
-        ),
-        UserInDB.organization_id == organization_id,
-    )
-    result = await dbsession.execute(statement=stmt)
+        def _coerce_enum(enum_cls, value, default):
+            try:
+                return enum_cls(value)
+            except (ValueError, KeyError):
+                return default
 
-    def full_name(user: UserInDB) -> str:
-        return " ".join(
-            part
-            for part in [
-                user.name,
-                user.second_name,
-                user.surname,
-                user.second_surname,
-            ]
-            if part
+        item_schemas.append(
+            RequisitionItemCreate(
+                item=item["item_id"],
+                category=item["category_id"],
+                kind=_coerce_enum(ItemType, item.get("kind"), ItemType.MATERIAL),
+                quantity=item["quantity"],
+                unit_of_measurement_type=_coerce_enum(
+                    UnitOfMeasurementType,
+                    item.get("unit_of_measurement_type"),
+                    UnitOfMeasurementType.UNITS,
+                ),
+                unit_of_measurement=_coerce_enum(
+                    UnitOfMeasurement,
+                    item.get("unit_of_measurement"),
+                    UnitOfMeasurement.UNITS,
+                ),
+                expected_at=expected_at,
+                description=item.get("description"),
+            )
         )
 
-    active_users = {full_name(user=user): user for user in result.scalars()}
-    matched_name, _, _ = rapidfuzz.process.extractOne(
-        name,
-        active_users.keys(),
-        processor=rapidfuzz.utils.default_process,
-    )
-    return active_users[matched_name]
-
-
-# LG TODO - Este hace un query por cada item, deberia traer todos una sola vez
-async def search_item_by_name(
-    name: str, organization_id: int, dbsession: AsyncSession
-) -> ItemInDB:
-    stmt = sa.select(ItemInDB).where(
-        ItemInDB.organization_id == organization_id,
-    )
-    result = await dbsession.execute(statement=stmt)
-    items = {item.name: item for item in result.scalars()}
-    matched_name, _, _ = rapidfuzz.process.extractOne(
-        name,
-        items.keys(),
-        processor=rapidfuzz.utils.default_process,
-    )
-    return items[matched_name]
-
-
-async def load_requisition(
-    extracted_requisition: RequisitionExtracted,
-    ldbsessionmaker: Callable[[], AsyncSession],
-    organization_id: int,
-) -> RequisitionCreate:
+    # LG OJO que el responsable quedo como opciona, ver !!
+    responsibles = [responsible_id] if responsible_id is not None else []
     requisition = RequisitionCreate.model_construct(
-        criticality=extracted_requisition.criticality
+        project=project_id,
+        responsibles=responsibles,
+        items=item_schemas,
     )
-    async with ldbsessionmaker() as dbsession:
-        project_indb = None
-        if extracted_requisition.project:
-            project_indb = await search_project_by_name(
-                name=extracted_requisition.project,
-                organization_id=organization_id,
-                dbsession=dbsession,
-            )
-        requisition.project = project_indb.id if project_indb else None
-
-        requisition.responsibles = [
-            (
-                await search_responsible_by_name(
-                    name=extracted_requisition.responsibles[0],
-                    organization_id=organization_id,
-                    dbsession=dbsession,
-                )
-            ).id
-        ]
-
-        requisition.items = []
-        for eitem in extracted_requisition.items or []:
-            item = await search_item_by_name(
-                name=eitem.name,
-                organization_id=organization_id,
-                dbsession=dbsession,
-            )
-            requisition.items.append(
-                RequisitionItemCreate(
-                    description=eitem.description,
-                    item=item.id,
-                    category=item.category_id,
-                    kind=item.kind or "MATERIALES",
-                    quantity=eitem.quantity,
-                    unit_of_measurement_type=eitem.unit_of_measurement_type,
-                    unit_of_measurement=eitem.unit_of_measurement,
-                    expected_at=eitem.expected_at,
-                )
-            )
-
-    return RequisitionCreate.model_validate(requisition.model_dump())
+    return requisition

@@ -13,6 +13,7 @@ import phonenumbers.timezone
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
+from langchain_core.messages import trim_messages
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command
@@ -20,6 +21,7 @@ from langgraph.graph import END
 from langgraph.graph import StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
+
 
 from lebex.app.state import AppState
 from lebex.app.state import LebaneUserContext
@@ -55,6 +57,25 @@ async def agent_node(state: AppState, config: RunnableConfig) -> dict:
             "organization_id": organization_id,
         },
     }
+
+    # LG esto me permite trimear el historial de mensajes que le paso al llm, para no pasarle todo el historial
+    '''
+        trimmed = trim_messages(
+        state.get("messages", []),
+        strategy="last",
+        token_counter=len,   # cuenta mensajes, no tokens
+        max_tokens=20,       # máximo 20 mensajes enviados al LLM
+        include_system=True,
+        allow_partial=False,
+        
+    )
+      result = await _core_agent.ainvoke(
+        {"messages": trimmed},
+        config=core_config,
+    )
+    '''
+
+    
     result = await _core_agent.ainvoke(
         {"messages": state.get("messages", [])},
         config=core_config,
@@ -255,3 +276,36 @@ async def aanswer(
     last_message = result["messages"][-1]
     assert isinstance(last_message, AIMessage)
     return last_message.content
+
+
+'''
+
+El checkpointer **está siendo usado correctamente**. Aquí el análisis:
+
+**Arquitectura de dos niveles:**
+
+1. **Grafo externo** (construido en `build_graph`): `load_lebane_user_context` → `agent` → END. Este se compila **con** el checkpointer en main.py:
+   ```python
+   configurable["compile_kwargs"]["checkpointer"] = checkpointer
+   # ...
+   graph.compile(**compile_kwargs)  # ← checkpointer incluido aquí
+   ```
+
+2. **`_core_agent`** (de `create_agent`): Es un subgrafo pre-compilado **sin** checkpointer propio. Se invoca dentro de `agent_node` con `_core_agent.ainvoke(...)`.
+
+**¿Por qué funciona bien sin checkpointer en `create_agent`?**
+
+- El checkpointer del **grafo externo** es el que persiste el estado completo (incluyendo `messages`) entre invocaciones del usuario, usando el `thread_id` (el teléfono).
+- `_core_agent` no necesita su propio checkpointer porque ejecuta su loop interno de tool-calling **dentro de una sola invocación**. Corre hasta completarse y devuelve todos los mensajes acumulados.
+- En la siguiente interacción del usuario, el grafo externo carga el checkpoint previo, el reducer `add_and_trim_messages` de state.py agrega el nuevo `HumanMessage` al historial existente, y se lo pasa completo a `_core_agent`.
+
+**Flujo resumido:**
+
+1. `aanswer()` extrae el checkpointer del configurable y lo pasa a `compile_kwargs`
+2. `build_graph()` compila el grafo externo **con** checkpointer
+3. Si hay estado previo (checkpoint), lo carga automáticamente para ese `thread_id`
+4. `agent_node` recibe el historial completo y lo pasa a `_core_agent`
+5. Al finalizar, el grafo externo guarda el nuevo estado via checkpointer
+
+**En resumen:** No hace falta pasar checkpointer a `create_agent`. El checkpointer en el grafo externo es suficiente y es el patrón correcto cuando encapsulás un agente como nodo dentro de otro grafo.
+'''

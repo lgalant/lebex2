@@ -32,6 +32,7 @@ from .schemas.ioniksend_message import IoniksendMessage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
+_RESET_KEYWORDS = {"reset", "nueva conversación", "nueva conversacion", "empezar de cero", "reiniciar"}
 
 
  
@@ -168,6 +169,18 @@ async def handle_events(
         )
         return
  
+     # LG - Reset de conversación
+    if payload.body.strip().lower() in _RESET_KEYWORDS:
+        await checkpointer.adelete_thread(phone)
+        await send_message(
+            text="Conversación reiniciada. ¿En qué te puedo ayudar?",
+            phone=phone,
+            settings=settings,
+            sender=payload.chatbot_num,
+            dbsessionmaker=dbsessionmaker,
+        )
+        return {"status": "reset"}
+    
     response = await aanswer(
         text=payload.body,
         configurable={

@@ -12,7 +12,7 @@ from lebane.requisition.schemas.types import UnitOfMeasurement
 from lebane.requisition.schemas.types import UnitOfMeasurementType
 
 
-class RequisitionItemExtracted(BaseModel):
+'''class RequisitionItemExtracted(BaseModel):
     name: str = Field(
         default="GENERAL",
         description="Name of the item with details like type or measurementes"
@@ -56,7 +56,7 @@ class RequisitionExtracted(BaseModel):
         default_factory=lambda: [RequisitionItemExtracted()],
         description="Responsible of the Requisition",
     )
-
+'''
 '''
 async def extract_requisition(
     text: str, context: None | dict = None
