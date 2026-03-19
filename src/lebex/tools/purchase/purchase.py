@@ -149,11 +149,13 @@ async def create_requisition(
     Busca automáticamente los IDs de proyecto, responsable e ítems a partir de
     descripciones en lenguaje natural usando búsqueda fuzzy. NO necesitás llamar
     tools previas para resolver IDs.
+    NO preguntes al usuario por el responsable si no lo mencionó. Usá None directamente.
 
     Args:
-        project_description: Nombre o descripción del proyecto (obligatorio, puede ser aproximado).
+        project_description: Nombre o descripción del proyecto (puede ser aproximado).
         responsible_description: Nombre o email del responsable (puede ser aproximado).
-                                  None si no hay responsable.
+                                  OPCIONAL: si el usuario no lo mencionó, pasá None y
+                                  NO lo preguntes. La requisición se crea sin responsable.
         items: Lista de ítems a pedir. Cada ítem debe tener:
             - item_description (str): nombre o descripción del ítem (puede ser aproximado)
             - quantity (float): cantidad
