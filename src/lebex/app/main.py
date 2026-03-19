@@ -80,6 +80,15 @@ async def agent_node(state: AppState, config: RunnableConfig) -> dict:
         {"messages": state.get("messages", [])},
         config=core_config,
     )
+    tool_calls_found = False
+    for msg in result["messages"]:
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_calls_found = True
+            for tc in msg.tool_calls:
+                logger.info("Tool llamada: %s | args: %s", tc["name"], tc["args"])
+    if not tool_calls_found:
+        logger.info("Sin tool calls: el bot respondio directo del contexto/memoria")
+
     return {"messages": result["messages"]}
 
 
@@ -263,12 +272,13 @@ async def aanswer(
     # Si quiero ver cual es la tool que el llm llamo, tengo que ir un poco mas atras
     # Aca busco de los mensajes, solo los que indican que fueron tool_calls, y muestro el ultimo
 
-    tool_calls_list = [
+    '''tool_calls_list = [
         msg.tool_calls
         for msg in state2.values['messages']
         if hasattr(msg, "tool_calls") and msg.tool_calls
     ]
-    #print("*En main. ultima tool call: ", tool_calls_list[-1]) # imprimo la ultima tool_call
+    print("*En main. ultima tool call: ", tool_calls_list[-1]) # imprimo la ultima tool_call
+    '''
 
     if "__interrupt__" in result:
         return result["__interrupt__"][-1].value

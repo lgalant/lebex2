@@ -85,12 +85,6 @@ def build_requisition(
     responsible_id: int | None,
     items: list[dict],
 ) -> RequisitionCreate:
-    """Build a RequisitionCreate from already-resolved IDs.
-
-    All IDs (project_id, responsible_id, item_id, category_id) must be
-    obtained upfront via the lookup tools (list_available_projects,
-    list_available_items, list_responsible_users) before calling this.
-    """
     item_schemas = []
     for item in items:
         delivery_date = item.get("delivery_date")

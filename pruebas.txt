@@ -1,0 +1,38 @@
+
+3 clientes que mas me deben
+***************************
+1. **Koda Grosz** 
+   - **Monto en Moneda Local:** $508,692,458.64
+   - **Monto en MXN:** MXN302,682.40
+   - **Monto en USD:** US$701,616.31
+
+2. **Lucas Helman**
+   - **Monto en Moneda Local:** $245,411,687.61 (Suma de todas las deudas en moneda local)
+   - **Monto en USD:** US$430,000.00 (Suma de todas las deudas en USD)
+
+3. **Lucas GZ**
+   - **Monto en Moneda Local:** $88,941,283.34
+   - **Monto en USD:** US$294,200.00
+
+
+crea una orden de pedido para el proyecto tesla data center de 120 m3 de agua
+*****************************************************************************
+
+Primero me dijo que :
+Parece que olvidé incluir los detalles del ítem en la orden de pedido. Necesito saber la identificación, 
+categoría y tipo del ítem correspondiente al agua que querés pedir. 
+Lamentablemente, no tengo información específica sobre el ítem de agua en la lista disponible.
+
+esto en langsmith se ve que intento llamar a la API con estos parametros
+y le dio este error
+  Field required [type=missing, input_value={'project_id': 1848, 'responsible_id': 7405}, input_type=dict]
+
+"Error invoking tool 'create_requisition' with kwargs {'project_id': 1848, 'responsible_id': 7405} with error:\n 
+items: Field required\n Please fix the error and try again."
+
+Luego volvi a ejecutar y dio:
+
+openai.BadRequestError: Error code: 400 - {'error': {'message': "This model's maximum context length is 128000 tokens. 
+However, your messages resulted in 164012 tokens (162910 in the messages, 1102 in the functions). 
+Please reduce the length of the messages or functions.", 'type': 'invalid_request_error', 'param': 'messages',
+ 'code': 'context_length_exceeded'}}
