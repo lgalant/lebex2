@@ -152,7 +152,7 @@ async def create_requisition(
     NO preguntes al usuario por el responsable si no lo mencionó. Usá None directamente.
 
     Args:
-        project_description: Nombre o descripción del proyecto (puede ser aproximado).
+        project_description: Nombre o descripción del proyecto (obligatorio, puede ser aproximado).
         responsible_description: Nombre o email del responsable (puede ser aproximado).
                                   OPCIONAL: si el usuario no lo mencionó, pasá None y
                                   NO lo preguntes. La requisición se crea sin responsable.

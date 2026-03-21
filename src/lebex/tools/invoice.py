@@ -100,7 +100,7 @@ async def search_project_by_name(
     return None
 
 
-async def create_provider_invoice_node(state, config):
+'''async def create_provider_invoice_node(state, config):
     """Create Provider Invoice on Lebane"""
     lsessionmaker = config["configurable"].get("lsessionmaker")
     ldbsessionmaker = config["configurable"].get("ldbsessionmaker")
@@ -231,7 +231,7 @@ async def create_provider_invoice_node(state, config):
         return {"messages": [AIMessage(content=message)]}
 
     return {"messages": [InvoiceMessage(content=message)]}
-
+'''
 
 # ---------------------------------------------------------------------------
 # Tool
@@ -274,7 +274,7 @@ async def create_invoice(
         return "Creación de factura cancelada."
 
     # Resolve project id if name provided
-    params: dict = {"tipoComprobante": "FACTURA"}
+    params: dict = {"tipoComprobante": "FACTURA","vertical":"DESARROLLO"}
     if project_name and ldbsessionmaker and organization_id:
         async with ldbsessionmaker() as dbsession:
             projectindb = await search_project_by_name(

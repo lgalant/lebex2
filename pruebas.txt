@@ -36,3 +36,159 @@ openai.BadRequestError: Error code: 400 - {'error': {'message': "This model's ma
 However, your messages resulted in 164012 tokens (162910 in the messages, 1102 in the functions). 
 Please reduce the length of the messages or functions.", 'type': 'invalid_request_error', 'param': 'messages',
  'code': 'context_length_exceeded'}}
+
+
+ *** CARGA *****
+
+crear factura proyecto tesla,vertical DESARROLLO 
+uri https://lebane-attachments.s3.us-east-2.amazonaws.com/610/templates-audits/afip/c16a7fa9-776f-426b-9001-ded6f5a1d36f/carga_11431.pdf
+
+---> 
+ 'Las facturas se cargaron con éxito:\n\n*Factura #91821676*\n\nOrganización: ADMIN LEBANE\
+ n\n*Artículos:*\n- Inversor Deye  On-grid 25kw (Cantidad: 1)\n'
+
+---> el numero de factura es el que figura en el papel, no es el id
+ select * from orden_de_pago where numero=91821676 (id = 139977) 
+
+
+Factura multiradio - dayplas 
+https://lebane-attachments.s3.us-east-2.amazonaws.com/610/templates-audits/afip/243e4e22-29d0-4bb2-a426-30d4cea9a0cd/carga_11475.pdf
+
+
+
+summary supplier
+*****************
+
+
+https://api-test.lebane.app/proyecto-proveedor/101/totalizadores-cc?vertical=DESARROLLO
+{
+    "id": 101, (tabla proyecto_proveedor)
+    "nombre": "ABELSON  S A",
+    "proveedor": {
+        "id": 1710,
+        "nombre": "ABELSON  S A"
+    },
+    "proyectoId": 66,
+    "proyectoNombre": "TS Plaza Nardone",
+    "totalizador": {
+        "presupuestoBaseLocal": 30243828731.59956403642100000000,
+        "saldoBaseLocal": 10251462843.55822141689485999999,
+        "pagadoBaseLocal": 26497572222.49487517253525116647,
+        "mayoresCostosLocal": 1981371.329356848909848,
+        *2*"pagadoTotalLocal": 26635889071.71631813734566906820,
+        "deudaFinalLocal": 40055913892.50612777801721786598,
+        *1*"facturadoTotalLocal": 16709443315.22102633273934900000,
+        "pagadoTotalCertificadosLocal": 26652485192.56631813733566906820,
+        *3*"saldoFacturadoLocal": -9943041877.34529180459632006820,
+        "presupuestoBaseExtranjera": 4929042.90000000000000000000,
+        "saldoBaseExtranjera": 106661.77924406779661000000,
+        "pagadoBaseExtranjera": 25273165.58987385819886698378,
+        "mayoresCostosExtranjera": 583.3068,
+        "pagadoTotalExtranjera": 30553469.25432210526272712430,
+        "deudaFinalExtranjera": 313719.94106464201885307000,
+        *4*"facturadoTotalExtranjera": 5204407.63747999999998000000,
+        "pagadoTotalCertificadosExtranjera": 30553469.25432210526272712430,
+        "saldoFacturadoExtranjera": -25349061.61684210526274712430,
+        "presupuestoBaseConsolidado": 200892619.72465572049266153000,
+        "saldoBaseConsolidado": 8453787.39929524800262296871,
+        "pagadoBaseConsolidado": 174428413.42054842608084485721,
+        "mayoresCostosConsolidado": 740662.221023154390768824,
+        "pagadoTotalConsolidado": 179820238.93240524330578259924,
+        "deudaFinalConsolidado": 150924242.04347101969102062665,
+        *7*"facturadoTotalConsolidado": 167417606.79564704989960124895,
+        *8mal*"pagadoTotalCertificadosConsolidado": 179833644.12090787114487649941,
+        *9mal*"saldoFacturadoConsolidado": -12416037.32526082124527525046,
+        *10*"facturadoTotalConsolidadoLocal": 24330425776.904426332715149000000000000000,
+        *11*"pagadoTotalCertificadosConsolidadoLocal": 44648495914.15653459956774756036,
+        *12*"saldoFacturadoConsolidadoLocal": -20318070137.252108266852598560360000000000
+    }
+}
+
+en PROD:
+
+https://service.lebane.app/proyecto-proveedor/705185/totalizadores-cc?vertical=DESARROLLO
+{
+    "id": 705185,
+    "nombre": "uno",
+    "proveedor": {
+        "id": 125243,
+        "nombre": "Multisolar"
+    },
+    "proyectoId": 2232,
+    "proyectoNombre": "Tesla data center",
+    "totalizador": {
+        "presupuestoBaseLocal": 13000882.00000000000000000000, 
+        "saldoBaseLocal": 699.99999999999999999678,
+        "pagadoBaseLocal": 182.00000000000000000322,
+        "mayoresCostosLocal": 0.0,
+        "pagadoTotalLocal": 182.00000000000000000322, 
+        "deudaFinalLocal": 16790679.51139790894079999678,
+        "facturadoTotalLocal": 882.00000000000000000000, 
+        "pagadoTotalCertificadosLocal": 182.00000000000000000322,
+        "saldoFacturadoLocal": 699.99999999999999999678, 
+        "presupuestoBaseExtranjera": 20000.00000000000000000000,
+        "saldoBaseExtranjera": 0,
+        "pagadoBaseExtranjera": 0,
+        "mayoresCostosExtranjera": 0,
+        "pagadoTotalExtranjera": 0,
+        "deudaFinalExtranjera": 20000.00000000000000000000,
+        "facturadoTotalExtranjera": 0,
+        "pagadoTotalCertificadosExtranjera": 0,
+        "saldoFacturadoExtranjera": 0,
+        "presupuestoBaseConsolidado": 29227.46160430423106900000, <- presup pesos + usd en usd
+        "saldoBaseConsolidado": 6.03448275862068965514,
+        "pagadoBaseConsolidado": 1.56896551724137931037,
+        "mayoresCostosConsolidado": 0.0,
+        "pagadoTotalConsolidado": 1.56896551724137931037,
+        "deudaFinalConsolidado": 31913.82137027486843103507,
+        "facturadoTotalConsolidado": 7.60344827586206900000,
+        "pagadoTotalCertificadosConsolidado": 1.56896551724137931037,
+        "saldoFacturadoConsolidado": 6.03448275862068968963,
+        "facturadoTotalConsolidadoLocal": 882.00000000000000000000,
+        "pagadoTotalCertificadosConsolidadoLocal": 182.00000000000000000322,
+        "saldoFacturadoConsolidadoLocal": 699.99999999999999999678
+    }
+}
+
+{
+    "id": 705185,
+    "nombre": "uno",
+    "proveedor": {
+        "id": 125243,
+        "nombre": "Multisolar"
+    },
+    "proyectoId": 2232,
+    "proyectoNombre": "Tesla data center",
+    "totalizador": {
+        "presupuestoBaseLocal": 13000882.00000000000000000000,<- presupuesto (contratos) en pesos
+        "saldoBaseLocal": 699.99999999999999999678,  <- deuda en pesos
+        "pagadoBaseLocal": 182.00000000000000000322,
+        "mayoresCostosLocal": 0.0,
+        "pagadoTotalLocal": 182.00000000000000000322,         <- pagado en pesos
+        "deudaFinalLocal": 16790679.51139790894079999678,     
+        "facturadoTotalLocal": 882.00000000000000000000,      <- facturado en pesos
+        "pagadoTotalCertificadosLocal": 182.00000000000000000322,
+        "saldoFacturadoLocal": 699.99999999999999999678,      <- deuda en pesos
+        "presupuestoBaseExtranjera": 20500.00000000000000000000,<- presupuesto (contratos) en usd
+        "saldoBaseExtranjera": 360.00000000000000000000,       <- deuda en usd
+        "pagadoBaseExtranjera": 140.00000000000000000000,      <- pagado en usd
+        "mayoresCostosExtranjera": 0.0,
+        "pagadoTotalExtranjera": 140.00000000000000000000,
+        "deudaFinalExtranjera": 20360.00000000000000000000,
+        "facturadoTotalExtranjera": 500.00000000000000000000,  <- facturado en usd
+        "pagadoTotalCertificadosExtranjera": 140.00000000000000000000,
+        "saldoFacturadoExtranjera": 360.00000000000000000000,
+        "presupuestoBaseConsolidado": 29727.46160430423106900000,  <- presup pesos + usd en usd (13m pesos + 20500usd)
+        "saldoBaseConsolidado": 366.03448275862068965514,  <- deuda pesos + usd en usd (700 pesos + 360 usd)
+        "pagadoBaseConsolidado": 141.56896551724137931037, <- pagado pesos + usd en usd (182 pesos + 140 usd)
+        "mayoresCostosConsolidado": 0.0,
+        "pagadoTotalConsolidado": 141.56896551724137931037,
+        "deudaFinalConsolidado": 32273.82137027486843103507,
+        "facturadoTotalConsolidado": 507.60344827586206900000, <- facturado pesos
+        "pagadoTotalCertificadosConsolidado": 141.56896551724137931037,
+        "saldoFacturadoConsolidado": 366.03448275862068968963,
+        "facturadoTotalConsolidadoLocal": 705882.000000000000000000000000000000,
+        "pagadoTotalCertificadosConsolidadoLocal": 197582.00000000000000000322,
+        "saldoFacturadoConsolidadoLocal": 508299.999999999999999996780000000000
+    }
+}

@@ -17,6 +17,7 @@ from lebex.core.lebane import get_lebane_async_sessionmaker
 from lebex.core.lebane import get_lebane_db_async_sessionmaker
 from lebex.core.settings import get_settings
 
+from .private.app import app as app_private
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[dict[str, Any]]:
@@ -54,3 +55,4 @@ app.add_middleware(
 )
 
 app.include_router(router=router)
+app.mount(path="/private/api", app=app_private, name="private")

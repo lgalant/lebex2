@@ -33,29 +33,14 @@ class _Base(DeclarativeBase):
     pass
 
 
-class _SupplierInDB(_Base):
-    __tablename__ = "proyecto_proveedor"
-
-    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
-    name: Mapped[str] = mapped_column("nombre", sa.String, nullable=False)
-    organization_id: Mapped[int] = mapped_column("organizacion_id", sa.Integer, nullable=True)
 
 
-async def _search_supplier_by_name(
-    name: str, organization_id: int, dbsession: AsyncSession
-) -> _SupplierInDB | None:
-    stmt = sa.select(_SupplierInDB).where(_SupplierInDB.organization_id == organization_id)
-    result = await dbsession.execute(statement=stmt)
-    active = {row.name: row for row in result.scalars()}
-    match = rapidfuzz.process.extractOne(
-        name, active.keys(),
-        processor=rapidfuzz.utils.default_process,
-        score_cutoff=70,
-    )
-    if match:
-        matched_name, _, _ = match
-        return active[matched_name]
-    return None
+ 
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
 
 
 TABULAR_TEMPLATE = jinja2.Template(
@@ -64,11 +49,6 @@ TABULAR_TEMPLATE = jinja2.Template(
 {% endfor %}{% if not loop.last %}------------------------------{% endif %}
 {% endfor %}"""
 )
-
-
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
 
 def _render(data: list) -> str:
     """Format up to 100 records as tabular markdown text."""
@@ -80,7 +60,6 @@ def _render(data: list) -> str:
 
 def _no_db() -> str:
     return "Hubo un problema al conectar con Lebane."
-
 
 # ---------------------------------------------------------------------------
 # READ tools
@@ -766,6 +745,103 @@ async def get_available_units_for_sale(config: RunnableConfig) -> str:
     return _render(data)
 
 
+# ---------------------------------------------------------------------------
+# Supplier Summary helpers and tool
+# ---------------------------------------------------------------------------
+
+class _SupplierInDB(_Base):
+    __tablename__ = "proveedor"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    name: Mapped[str] = mapped_column("nombre", sa.String, nullable=False)
+    organization_id: Mapped[int] = mapped_column("organizacion_id", sa.Integer, nullable=True)
+
+class _ContratoInDB(_Base):
+    __tablename__ = "contrato"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    proveedor_id: Mapped[int] = mapped_column(sa.Integer)
+    proyecto_id: Mapped[int] = mapped_column(sa.Integer)
+    organization_id: Mapped[int] = mapped_column("organizacion_id", sa.Integer, nullable=True)
+
+
+class _ProjectSupplierInDB(_Base):
+    __tablename__ = "proyecto_proveedor"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    proveedor_id: Mapped[int] = mapped_column(sa.Integer)
+    proyecto_id: Mapped[int] = mapped_column(sa.Integer)
+    organization_id: Mapped[int] = mapped_column("organizacion_id", sa.Integer, nullable=True)
+
+
+async def _search_project_supplier_by_name(
+    name: str, organization_id: int, dbsession: AsyncSession
+) -> list[_ProjectSupplierInDB]:
+    stmt = sa.select(_SupplierInDB).where(_SupplierInDB.organization_id == organization_id)
+    result = await dbsession.execute(statement=stmt)
+    active = {row.name: row for row in result.scalars()}
+    match = rapidfuzz.process.extractOne(
+        name, active.keys(),
+        processor=rapidfuzz.utils.default_process,
+        score_cutoff=70,
+    )
+    if not match:
+        return []
+
+    matched_name, _, _ = match
+    proveedor = active[matched_name]
+
+    # Para que no aparezcan proveedores sin contratos asociados
+    contrato_exists = sa.exists(
+        sa.select(1).where(
+            _ContratoInDB.proveedor_id == _ProjectSupplierInDB.proveedor_id,
+            _ContratoInDB.proyecto_id == _ProjectSupplierInDB.proyecto_id,
+            _ContratoInDB.organization_id == organization_id,
+        )
+    )
+
+    stmt2 = sa.select(_ProjectSupplierInDB).where(
+        _ProjectSupplierInDB.proveedor_id == proveedor.id,
+        _ProjectSupplierInDB.organization_id == organization_id,
+        contrato_exists,
+    )
+    result2 = await dbsession.execute(statement=stmt2)
+    return list(result2.scalars())
+
+def to_usd(v):
+    return babel.numbers.format_currency(v, currency="USD", locale="es_AR")
+
+def to_ars(v):
+    return babel.numbers.format_currency(v, currency="ARS", locale="es_AR")
+
+
+def humanize(row):
+    t = row["totalizador"]
+    d = {
+        "Proveedor": row["proveedor"]["nombre"],
+        "Cuenta Corriente": row["nombre"],
+        "Proyecto": row["proyectoNombre"],
+    }
+    if any(t[k] > 0 for k in t if "local" in k.lower()):
+        d.update({
+            "Presupuesto Base Local": to_ars(t["presupuestoBaseLocal"]),
+            "Saldo Base Local": to_ars(t["saldoBaseLocal"]),
+            "Pagado Total Local": to_ars(t["pagadoBaseLocal"]),
+            "Deuda Final Local": to_ars(t["deudaFinalLocal"]),
+        })
+    if any(t[k] > 0 for k in t if "extranjera" in k.lower()):
+        d.update({
+            "Presupuesto Base Extranjera": to_usd(t["presupuestoBaseExtranjera"]),
+            "Saldo Base Extranjera": to_usd(t["saldoBaseExtranjera"]),
+            "Pagado Total Extranjera": to_usd(t["pagadoBaseExtranjera"]),
+            "Deuda Final Extranjera": to_usd(t["deudaFinalExtranjera"]),
+        })
+    if len(d) == 3:
+        d["Nota"] = "No hay información financiera disponible."
+    return d
+
+
+
 @tool
 async def get_supplier_summary(supplier_name: str, config: RunnableConfig) -> str:
     """Resumen financiero completo de un proveedor: presupuesto, saldo y deuda por proyecto.
@@ -780,65 +856,36 @@ async def get_supplier_summary(supplier_name: str, config: RunnableConfig) -> st
         return _no_db()
 
     async with ldbsessionmaker() as dbsession:
-        supplier = await _search_supplier_by_name(
+        project_suppliers = await _search_project_supplier_by_name(
             name=supplier_name,
             organization_id=organization_id,
             dbsession=dbsession,
         )
 
-    if supplier is None:
+    if not project_suppliers:
         return f"No encontré un proveedor con nombre '{supplier_name}'. Verificá el nombre e intentá de nuevo."
 
     async with lsessionmaker() as client:
         http_client = client._session
         assert isinstance(http_client, httpx.AsyncClient)
 
-        try:
-            response = await http_client.get(
-                url="/proyecto-proveedor/general/cuentas-corrientes",
-                params={"pagina": "0", "cantidad": "50", "search": supplier.name},
-            )
-            response.raise_for_status()
-        except httpx.ReadTimeout:
-            return "La llamada a Lebane tomó demasiado tiempo."
-        except httpx.HTTPStatusError as exc:
-            logger.error(exc.response.text)
-            return _no_db()
+        data = []
+        for project_supplier in project_suppliers:
+            try:
+                response = await http_client.get(
+                    url=f"/proyecto-proveedor/{project_supplier.id}/totalizadores-cc",
+                    params={"vertical": "DESARROLLO"}
+                )
+                response.raise_for_status()
+            except httpx.ReadTimeout:
+                return "La llamada a Lebane tomó demasiado tiempo."
+            except httpx.HTTPStatusError as exc:
+                logger.error(exc.response.text)
+                return _no_db()
 
-    result = response.json().get("content", [])
+            result = response.json()
+            data.append(humanize(result))
 
-    def to_usd(v):
-        return babel.numbers.format_currency(v, currency="USD", locale="es_AR")
-
-    def to_ars(v):
-        return babel.numbers.format_currency(v, currency="ARS", locale="es_AR")
-
-    def humanize(row):
-        t = row["totalizador"]
-        d = {
-            "Proveedor": row["proveedor"]["nombre"],
-            "Cuenta Corriente": row["nombre"],
-            "Proyecto": row["proyectoNombre"],
-        }
-        if any(t[k] > 0 for k in t if "local" in k.lower()):
-            d.update({
-                "Presupuesto Base Local": to_ars(t["presupuestoBaseLocal"]),
-                "Saldo Base Local": to_ars(t["saldoBaseLocal"]),
-                "Pagado Total Local": to_ars(t["pagadoBaseLocal"]),
-                "Deuda Final Local": to_ars(t["deudaFinalLocal"]),
-            })
-        if any(t[k] > 0 for k in t if "extranjera" in k.lower()):
-            d.update({
-                "Presupuesto Base Extranjera": to_usd(t["presupuestoBaseExtranjera"]),
-                "Saldo Base Extranjera": to_usd(t["saldoBaseExtranjera"]),
-                "Pagado Total Extranjera": to_usd(t["pagadoBaseExtranjera"]),
-                "Deuda Final Extranjera": to_usd(t["deudaFinalExtranjera"]),
-            })
-        if len(d) == 3:
-            d["Nota"] = "No hay información financiera disponible."
-        return d
-
-    data = [humanize(row) for row in result]
     return _render(data)
 
 

@@ -21,7 +21,7 @@ from langgraph.graph import END
 from langgraph.graph import StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
-
+from langchain_core.messages import RemoveMessage
 
 from lebex.app.state import AppState
 from lebex.app.state import LebaneUserContext
@@ -29,6 +29,8 @@ from lebex.tools import ALL_TOOLS
 
 
 logger = logging.getLogger(__name__)
+_RESET_KEYWORDS = {"reset", "nueva conversación", "nueva conversacion", "empezar de cero", "reiniciar"}
+
 
 _SYSTEM_PROMPT = """Sos un asistente del sistema ERP Lebane.
 Ayudás a los usuarios a consultar información financiera, comercial y operativa de su organización con informacion \
@@ -80,14 +82,10 @@ async def agent_node(state: AppState, config: RunnableConfig) -> dict:
         {"messages": state.get("messages", [])},
         config=core_config,
     )
-    tool_calls_found = False
     for msg in result["messages"]:
         if hasattr(msg, "tool_calls") and msg.tool_calls:
-            tool_calls_found = True
             for tc in msg.tool_calls:
                 logger.info("Tool llamada: %s | args: %s", tc["name"], tc["args"])
-    if not tool_calls_found:
-        logger.info("Sin tool calls: el bot respondio directo del contexto/memoria")
 
     return {"messages": result["messages"]}
 
@@ -207,6 +205,22 @@ async def load_lebane_user_context_node(
     }
 
 
+async def _reset_thread(graph, config: RunnableConfig) -> None:
+    """Borra todos los mensajes del thread via LangGraph."""
+    thread_id = config["configurable"].get("thread_id", "?")
+    try:
+        state = await graph.aget_state(config=config)
+        messages = state.values.get("messages", [])
+        if not messages:
+            logger.info("Thread %s ya estaba vacío", thread_id)
+            return
+        await graph.aupdate_state(
+            config,
+            {"messages": [RemoveMessage(id=m.id) for m in messages]},
+        )
+        logger.info("Thread reseteado: %s (%d mensajes borrados)", thread_id, len(messages))
+    except Exception:
+        logger.exception("Error al resetear thread %s", thread_id)
 
 async def build_graph(config: None | RunnableConfig = None):
     configurable = (config or {}).get("configurable", {})
@@ -245,6 +259,11 @@ async def aanswer(
     }
 
     graph = await build_graph(config=config)
+
+    # LG - Reset de conversación
+    if text.strip().lower() in _RESET_KEYWORDS:
+        await _reset_thread(graph, config)
+        return "Conversación reiniciada. ¿En qué te puedo ayudar?"
 
     state = None
     if checkpointer:

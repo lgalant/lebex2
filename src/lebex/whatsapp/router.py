@@ -25,6 +25,7 @@ from lebex.api.dependencies import get_lebane_db_async_sessionmaker
 from lebex.api.dependencies import get_memory_store
 from lebex.api.dependencies import get_settings
 
+
 from lebex.core.settings import Settings
 
 from .schemas.ioniksend_message import IoniksendMessage
@@ -32,8 +33,6 @@ from .schemas.ioniksend_message import IoniksendMessage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
-_RESET_KEYWORDS = {"reset", "nueva conversación", "nueva conversacion", "empezar de cero", "reiniciar"}
-
 
  
 async def save_lebex_message(
@@ -131,7 +130,6 @@ async def send_message(
             db_session=db_session,
         )
 
-
 '''payload: IoniksendMessage — del body HTTP
 FastAPI detecta que IoniksendMessage es un modelo Pydantic (no un tipo primitivo, no tiene Depends). 
 Por eso lo trata como request body JSON. Cuando llega un POST a /whatsapp/events, FastAPI deserializa 
@@ -169,17 +167,6 @@ async def handle_events(
         )
         return
  
-     # LG - Reset de conversación
-    if payload.body.strip().lower() in _RESET_KEYWORDS:
-        await checkpointer.adelete_thread(phone)
-        await send_message(
-            text="Conversación reiniciada. ¿En qué te puedo ayudar?",
-            phone=phone,
-            settings=settings,
-            sender=payload.chatbot_num,
-            dbsessionmaker=dbsessionmaker,
-        )
-        return {"status": "reset"}
     
     response = await aanswer(
         text=payload.body,
