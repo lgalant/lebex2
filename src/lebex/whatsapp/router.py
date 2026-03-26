@@ -214,4 +214,4 @@ async def handle_events(
 @router.get("/events")
 async def handle_events():
     print("Received event from Ioniksend")
-    return {"status": "aca stamo 2"}
+    return {"status": "Received event from Ioniksend"}

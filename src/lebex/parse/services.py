@@ -89,13 +89,52 @@ async def invoice_to_model(file: BinaryIO, content_type: str) -> Invoice:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "This is an invoice. "\
-                    "The top section is usually the seller information including invoice number, date and invoice type (A,B,C,X), the middle part is the buyer information"\
-                    "The most important information on these sections is CUIT (like tax id) and it is usually xx-xxxxxxxx-x format, sometimes without dashes"\
-                    "Also grab the company name (razon social),  full address information , and tax status"
-                    "The bottom section is the list of items, each item has a description, quantity, unit price, uom,  taxes and total amount."\
-                    "Also grab discount info, exchange rate, tax rate and amounts"
-                    "If there is a currency code convert to ISO"},
+                    {"type": "text", "text": """Eres un extractor estructurado de datos de facturas 
+                    "Tu tarea es analizar el texto (o imagen) de una factura y devolver exclusivamente un objeto JSON con los campos definidos, sin explicaciones adicionales."\
+                ## REGLAS GENERALES
+                - Si un campo no está presente en el documento, usa null.
+                - No inventes ni inferas valores que no estén explícitos en el documento.
+                - Todos los importes deben expresarse como números (float), sin símbolos de moneda.
+                - Es imporatante tomar la razon social y la direccion completa incluyendo calle, numero, ciudad, provincia/estado, codigo postal
+                
+                ## IDENTIFICACIÓN DEL TAX ID POR PAÍS
+                Detecta el país a partir del formato del número fiscal y el nombre del campo. Extrae:
+                - tin type: nombre del campo tal como aparece en el documento sin puntos, ni comas, ni caracteres especiales (ej: "CUIT", "RUT", "RFC", "NIT", "RUC", "CI", "RIF")
+                - tax_id_value: valor numérico o alfanumérico tal como figura en el documento
+
+                Referencia de formatos por país:
+                | País        | Label(s)        | Formato típico              |
+                |-------------|------------------|-----------------------------|
+                | Argentina   | CUIT / CUIL      | XX-XXXXXXXX-X               |
+                | México      | RFC              | 4 letras + 6 dígitos + 3 hom|
+                | Chile       | RUT              | XXXXXXXX-X (dígito verif.)  |
+                | Colombia    | NIT              | XXXXXXXXX-X                 |
+                | Perú        | RUC              | 20XXXXXXXXX (11 dígitos)    |
+                | Ecuador     | RUC              | XXXXXXXXXXX (13 dígitos)    |
+                | Brasil      | CNPJ / CPF       | XX.XXX.XXX/XXXX-XX          |
+                | Uruguay     | RUT              | XXXXXXXXXXX (12 dígitos)    |
+                | Venezuela   | RIF              | J/G/V/E-XXXXXXXXX-X         |
+                | Paraguay    | RUC              | XXXXXXXX-X                  |
+                | Bolivia     | NIT              | XXXXXXXXXXX                 |
+                | Guatemala   | NIT              | XXXXXXXX-X                  |
+                | Costa Rica  | Cédula Jurídica  | X-XXX-XXXXXX                |
+                | Panamá      | RUC              | XX-XXX-XXXXXX               |
+            
+            ## NOTAS DE CONTEXTO POR CAMPO
+            - unit_of_measure: unidad tal como figura (ej: "kg", "lt", "m²", "hs", "unid", "caja", "svc").
+            - tax_rates por ítem: extraer si la factura especifica impuesto por línea; si es global, dejar array vacío [].
+            - tax_breakdown en totals: incluir todos los impuestos visibles (IVA 10.5%, IVA 21%, Percepción, ICMS, ISS, etc.).
+            - document_type: respetar la denominación local (Factura A/B/C en AR, CFDI en MX, Boleta/Factura en CL, etc.).
+            - Moneda convertir a codigo ISO 4217 (ARS, MXN, CLP, USD, etc.); si no se especifica, asumir moneda local del país identificado.
+            - country: código ISO 3166-1 alpha-2 inferido
+                     
+            ## MANEJO DE AMBIGÜEDADES
+            - Si hay múltiples monedas, extrae la moneda de los totales como valor principal.
+            - Si el emisor y receptor son del mismo país, inferir country en ambos.
+            - Si una tasa de impuesto aplica a todos los ítems, puedes indicarla en totals.tax_breakdown y omitirla en cada línea.
+            - Ante texto ilegible o ambiguo, usa null y no adivines.                  
+                    """
+                    },
                     {
                         "type": "image_url",
                         "image_url": {

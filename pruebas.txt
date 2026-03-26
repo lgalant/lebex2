@@ -106,50 +106,6 @@ https://api-test.lebane.app/proyecto-proveedor/101/totalizadores-cc?vertical=DES
 
 en PROD:
 
-https://service.lebane.app/proyecto-proveedor/705185/totalizadores-cc?vertical=DESARROLLO
-{
-    "id": 705185,
-    "nombre": "uno",
-    "proveedor": {
-        "id": 125243,
-        "nombre": "Multisolar"
-    },
-    "proyectoId": 2232,
-    "proyectoNombre": "Tesla data center",
-    "totalizador": {
-        "presupuestoBaseLocal": 13000882.00000000000000000000, 
-        "saldoBaseLocal": 699.99999999999999999678,
-        "pagadoBaseLocal": 182.00000000000000000322,
-        "mayoresCostosLocal": 0.0,
-        "pagadoTotalLocal": 182.00000000000000000322, 
-        "deudaFinalLocal": 16790679.51139790894079999678,
-        "facturadoTotalLocal": 882.00000000000000000000, 
-        "pagadoTotalCertificadosLocal": 182.00000000000000000322,
-        "saldoFacturadoLocal": 699.99999999999999999678, 
-        "presupuestoBaseExtranjera": 20000.00000000000000000000,
-        "saldoBaseExtranjera": 0,
-        "pagadoBaseExtranjera": 0,
-        "mayoresCostosExtranjera": 0,
-        "pagadoTotalExtranjera": 0,
-        "deudaFinalExtranjera": 20000.00000000000000000000,
-        "facturadoTotalExtranjera": 0,
-        "pagadoTotalCertificadosExtranjera": 0,
-        "saldoFacturadoExtranjera": 0,
-        "presupuestoBaseConsolidado": 29227.46160430423106900000, <- presup pesos + usd en usd
-        "saldoBaseConsolidado": 6.03448275862068965514,
-        "pagadoBaseConsolidado": 1.56896551724137931037,
-        "mayoresCostosConsolidado": 0.0,
-        "pagadoTotalConsolidado": 1.56896551724137931037,
-        "deudaFinalConsolidado": 31913.82137027486843103507,
-        "facturadoTotalConsolidado": 7.60344827586206900000,
-        "pagadoTotalCertificadosConsolidado": 1.56896551724137931037,
-        "saldoFacturadoConsolidado": 6.03448275862068968963,
-        "facturadoTotalConsolidadoLocal": 882.00000000000000000000,
-        "pagadoTotalCertificadosConsolidadoLocal": 182.00000000000000000322,
-        "saldoFacturadoConsolidadoLocal": 699.99999999999999999678
-    }
-}
-
 {
     "id": 705185,
     "nombre": "uno",
@@ -192,3 +148,72 @@ https://service.lebane.app/proyecto-proveedor/705185/totalizadores-cc?vertical=D
         "saldoFacturadoConsolidadoLocal": 508299.999999999999999996780000000000
     }
 }
+
+
+Le pido el resumen de Abelson y me tira resultados
+
+1. **Proyecto: TS Plaza Nardone**
+   - Presupuesto Local: $30.243.828.731,60
+   - Saldo Local: $10.251.462.843,56
+   - Pagado Total Local: $26.497.572.222,49
+   - Deuda Final Local: $40.055.913.892,51
+   - Presupuesto Extranjera: US$4.929.042,90
+   - Saldo Extranjera: US$106.661,78
+   - Pagado Total Extranjera: US$25.273.165,59
+   - Deuda Final Extranjera: US$313.719,94
+
+2. **Proyecto: TS Unico**
+   - Presupuesto Local: $10.022.893.249.166,00
+   - Saldo Local: $20.000,00
+   - Pagado Total Local: $225.698.877,00
+   - Deuda Final Local: $14.363.034.164.941,88
+   - Presupuesto Extranjera: US$37.779.750,00
+   - Saldo Extranjera: US$1.200,00
+   - Pagado Total Extranjera: US$5.181.828,53
+   - Deuda Final Extranjera: US$38.421.951,16
+
+3. **Proyecto: TS Principal**
+   - Presupuesto Local: $1.110.000,00
+   - Saldo Local: $0,00
+   - Pagado Total Local: $20.000,00
+   - Deuda Final Local: $1.210.000,00
+
+4. **Proyecto: TS Demo Day**
+   - Presupuesto Local: $168.387.636,64
+   - Saldo Local: $39.034.070,11
+   - Pagado Total Local: $1.211.977.656,87
+   - Deuda Final Local: $55.874.353,14
+   - Presupuesto Extranjera: US$3.355.113,12
+   - Saldo Extranjera: US$2.776.689,90
+   - Pagado Total Extranjera: US$940,33
+   - Deuda Final Extranjera: US$3.527.561,71
+
+5. **Proyecto: TS Plaza Nardone (Abelson 2)**
+   - Presupuesto Local: $1.411.389,95
+   - Saldo Local: $0,00
+   - Pagado Total Local: $1.411.389,95
+   - Deuda Final Local: $0,00
+
+6. **Proyecto: TS Unico (TEST BUSQUEDA)**
+   - Nota: No hay información financiera disponible.
+Luego le pido que me haga el consolidado (que lo resuelva el bot con datos que ya tenia) y me responde mal
+
+Le digo: no me dan los numeros,me explicas como hiciste la cuenta de saldo total en base extranjera?
+ 
+    "status": "Mis disculpas, cometí un error. Permíteme recalcular el saldo total en base extranjera 
+    sumando los valores de saldo que tenemos para cada proyecto:\n\n1. 
+    **TS Plaza Nardone:** US$106.661,78\n2. **TS Unico:** US$1.200,00\n3. 
+    **TS Demo Day:** US$2.776.689,90\n\nSumando estos valores:\n\n
+    US$106.661,78 + US$1.200,00 + US$2.776.689,90 = US$2.884.551,68\n\nAhora debería coincidir correctamente. 
+    Espero que esto aclare la confusión. Si tienes más dudas, no dudes en preguntar."
+
+
+en tst mi usuario es 40273
+tiene 3 proyectos
+1848 - tesla data center
+66 - ts plaza nardone
+75 - ts unico
+
+
+Facturas drive
+https://drive.google.com/drive/folders/1F2nEKiGdSrUyq8Vr2ddqlKC5-P2Nd9L-?usp=sharing

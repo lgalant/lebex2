@@ -28,6 +28,10 @@ class Entity(Base):
         description="Tax Identification Number, is a unique identifier "
         "assigned to a business or individual for tax purposes.",
     )
+    tin_type: None | str = Field(
+        None,
+        description="Type of tax id, depends on the country (ej: CUIT, RUT, RFC, NIT, RUC, CI, RIF, etc).", 
+    )
     name: None | str = Field(
         None,
         description="The full, formal name as it appears in "

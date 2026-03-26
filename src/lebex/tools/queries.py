@@ -10,6 +10,7 @@ Write tools: use interrupt() to ask for explicit user confirmation before
 """
 import itertools
 import logging
+from typing import Annotated
 
 import babel.dates
 import babel.numbers
@@ -341,9 +342,24 @@ async def get_pending_invoices_by_supplier(config: RunnableConfig) -> str:
     return _render(data)
 
 
+# LG - DEPRECATED
+# SUMA USD Y PESOS
+# ESTA DUPLICADA CON get_income_projection_this_week
+# ahora unifique las 2 en get_income_projection, que recibe un parametro de dias
+'''
 @tool
-async def get_income_projection_next_month(config: RunnableConfig) -> str:
-    """Proyección de ingresos esperados en los próximos 30 días, por moneda."""
+async def get_income_projection_next_month(
+    days: Annotated[
+        int,
+        "Número de días del período de proyección (entre 1 y 365). "
+        "Convierte la expresión del usuario al número de días equivalente antes de llamar a esta herramienta. "
+        "Ejemplos: '5 días' → 5, 'una semana' → 7, '2 semanas' → 14, '1 mes' → 30, '2 meses' → 60, '1 año' → 365.",
+    ],
+    config: RunnableConfig,
+) -> str:
+    """Proyección de ingresos esperados en los próximos N días (1–365), por moneda."""
+    days = max(1, min(365, int(days)))
+
     ldbsessionmaker = config["configurable"].get("ldbsessionmaker")
     organization_id = config["configurable"].get("organization_id")
     if not ldbsessionmaker:
@@ -361,20 +377,20 @@ async def get_income_projection_next_month(config: RunnableConfig) -> str:
                     LEFT JOIN moneda ON moneda.id = cpi.moneda_id
                     WHERE cpi.cantidad_cuotas > 0
                       AND ci.saldo > 0
-                      AND (ci.fecha BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+                      AND (ci.fecha BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY))
                       AND cpi.organizacion_id = :organization_id
                     UNION ALL
                     SELECT SUM(cpi.saldo) AS total_saldo, moneda.iso AS moneda_iso
                     FROM cliente_proyecto_item cpi
                     LEFT JOIN moneda ON moneda.id = cpi.moneda_id
                     WHERE cpi.cantidad_cuotas = 0
-                      AND (cpi.fecha_primera_cuota BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+                      AND (cpi.fecha_primera_cuota BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY))
                       AND cpi.organizacion_id = :organization_id
                     GROUP BY moneda.iso
                 ) AS t
                 GROUP BY moneda_iso
                 """
-            ).bindparams(organization_id=organization_id)
+            ).bindparams(organization_id=organization_id, days=days)
         )
 
     data = [
@@ -382,11 +398,11 @@ async def get_income_projection_next_month(config: RunnableConfig) -> str:
         for row in result
     ]
     return _render(data)
-
+'''
 
 @tool
-async def get_expected_payments_today(config: RunnableConfig) -> str:
-    """Lista las facturas de proveedores con vencimiento hoy o anteriores pendientes de pago."""
+async def get_expected_payments(config: RunnableConfig) -> str:
+    """Lista las facturas de proveedores que estan vencidas y pendientes de pago. Si se pide filtro por fecha o rango usar fecha_vencimiento_pago """
     ldbsessionmaker = config["configurable"].get("ldbsessionmaker")
     organization_id = config["configurable"].get("organization_id")
     if not ldbsessionmaker:
@@ -424,11 +440,20 @@ async def get_expected_payments_today(config: RunnableConfig) -> str:
         for row in result
     ]
     return _render(data)
-
-
+ 
 @tool
-async def get_income_projection_this_week(config: RunnableConfig) -> str:
-    """Proyección de ingresos esperados durante la semana actual, por moneda."""
+async def get_income_projection(
+    days: Annotated[
+        int,
+        "Número de días del período de proyección (entre 1 y 365). "
+        "Convierte la expresión del usuario al número de días equivalente antes de llamar a esta herramienta. "
+        "Ejemplos: '5 días' → 5, 'una semana' → 7, '2 semanas' → 14, '1 mes' → 30, '2 meses' → 60, '1 año' → 365.",
+    ],
+    config: RunnableConfig,
+) -> str:
+    """Proyección de ingresos esperados en los próximos N días (1–365), por moneda."""
+    days = max(1, min(365, int(days)))
+
     ldbsessionmaker = config["configurable"].get("ldbsessionmaker")
     organization_id = config["configurable"].get("organization_id")
     if not ldbsessionmaker:
@@ -446,9 +471,7 @@ async def get_income_projection_this_week(config: RunnableConfig) -> str:
                     LEFT JOIN moneda ON moneda.id = ci.moneda_id
                     LEFT JOIN cliente_proyecto cp ON cp.id = cpi.cliente_proyecto_id
                     LEFT JOIN proyecto proj ON proj.id = cp.proyecto_id
-                    WHERE (ci.fecha BETWEEN
-                        DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND
-                        DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 6 DAY))
+                    WHERE (ci.fecha BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY))
                       AND proj.organizacion_id = :organization_id
                     GROUP BY moneda.iso
                     UNION ALL
@@ -456,15 +479,13 @@ async def get_income_projection_this_week(config: RunnableConfig) -> str:
                     FROM cliente_proyecto_item cpi
                     LEFT JOIN moneda ON moneda.id = cpi.moneda_id
                     WHERE cpi.cantidad_cuotas = 0
-                      AND (cpi.fecha_primera_cuota BETWEEN
-                        DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND
-                        DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 6 DAY))
+                      AND (cpi.fecha_primera_cuota BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY))
                       AND cpi.organizacion_id = :organization_id
                     GROUP BY moneda.iso
                 ) AS t
                 GROUP BY moneda_iso
                 """
-            ).bindparams(organization_id=organization_id)
+            ).bindparams(organization_id=organization_id, days=days)
         )
 
     data = [
@@ -569,12 +590,12 @@ async def get_checks_due_this_week(config: RunnableConfig) -> str:
             sa.text(
                 """
                 SELECT
-                    cheque.numero, cheque.monto, cheque.fecha_de_pago,
+                    cheque.numero, cheque.monto, cheque.fecha_de_vencimiento,
                     moneda.iso, inf.nombre AS institucion
                 FROM cheque
                 LEFT JOIN moneda ON moneda.id = cheque.moneda_id
                 LEFT JOIN institucion_financiera inf ON inf.id = cheque.institucion_financiera_id
-                WHERE estado IN ('ENTREGADO', 'EMITIDO')
+                WHERE estado IN ('ENTREGADO', 'EMITIDO', 'PAGADO')
                   AND organizacion_id = :organization_id
                   AND (cheque.fecha_de_pago BETWEEN
                     DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND
@@ -629,6 +650,7 @@ async def get_avg_sale_price_per_sqm(config: RunnableConfig) -> str:
                 ) m ON m.cliente_proyecto_id = cp.id
                 WHERE p.organizacion_id = :organization_id
                 GROUP BY p.nombre
+                having usd_por_m2 IS NOT NULL
                 """
             ).bindparams(organization_id=organization_id)
         )
@@ -671,8 +693,18 @@ async def get_investor_clients_by_project(config: RunnableConfig) -> str:
 
 
 @tool
-async def get_new_prospects_this_week(config: RunnableConfig) -> str:
-    """Prospectos nuevos creados durante la semana actual."""
+async def get_new_prospects(
+    days: Annotated[
+        int,
+        "Número de días hacia atrás desde hoy para filtrar prospectos creados (entre 1 y 365). "
+        "Convierte la expresión del usuario al número de días equivalente antes de llamar a esta herramienta. "
+        "Ejemplos: 'esta semana' → 7, 'este mes' → 30, 'este año' → 365, 'últimos 10 días' → 10, '2 meses' → 60.",
+    ],
+    config: RunnableConfig,
+) -> str:
+    """Prospectos nuevos creados en los últimos N días (1–365)."""
+    days = max(1, min(365, int(days)))
+
     ldbsessionmaker = config["configurable"].get("ldbsessionmaker")
     organization_id = config["configurable"].get("organization_id")
     if not ldbsessionmaker:
@@ -689,11 +721,10 @@ async def get_new_prospects_this_week(config: RunnableConfig) -> str:
                 FROM prospecto
                 LEFT JOIN usuario ON usuario.id = prospecto.responsable_id
                 WHERE prospecto.organizacion_id = :organization_id
-                  AND (fecha_de_creacion BETWEEN
-                    DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND
-                    DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 6 DAY))
+                  AND fecha_de_creacion >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
+                ORDER BY fecha_de_creacion DESC
                 """
-            ).bindparams(organization_id=organization_id)
+            ).bindparams(organization_id=organization_id, days=days)
         )
 
     data = [
@@ -899,15 +930,15 @@ READ_TOOLS = [
     get_clients_balance,
     get_clients_with_debt_by_project,
     get_pending_invoices_by_supplier,
-    get_income_projection_next_month,
-    get_expected_payments_today,
-    get_income_projection_this_week,
+    #get_income_projection_next_month, -- suma usd y pesos!!
+    get_expected_payments,
+    get_income_projection,
     get_pending_invoices_this_week,
     get_expenses_by_project,
     get_checks_due_this_week,
     get_avg_sale_price_per_sqm,
     get_investor_clients_by_project,
-    get_new_prospects_this_week,
+    get_new_prospects,
     get_available_units_for_sale,
     get_supplier_summary,
 ]
